@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>验证注册</title>
+</head>
+<body>
+	<div class="diacrisis">
+	<ul>
+    <li>
+    	<input id="phone" type="text" class="ipt" placeholder="输入手机号码" value="">
+    	<p class="red error"></p>
+    </li>
+    <li style="display:none" class="imgCode">
+    <input id="captcha" type="text" class="ipt" placeholder="验证码" value="" maxlength="12"><span class="ident" title="换一张"><img src="/captcha.action" id="imgCode"></span>
+    	<p class="red error"></p>
+    </li>
+    <li>
+    	<input id="code" type="tel" class="ipt" placeholder="短信验证码" value="" maxlength="8"><button class="ident phone" id="getCode">获取手机验证码</button>
+    	<p class="red error"></p>
+    </li>
+  </ul>
+</div> 
+<div class="askbut tc"><button id="submitBtn" class="submit"/>立即注册</button></div>
+
+<script src="https://scss.9666sr.com/sr/js/lib/jquery/191.js?ver=1450872796763"></script>
+ <script type="text/javascript" src="https://sjs.9666sr.com/sr/js/mobile/layer/1.7/layer.js?ver=1450872796763"></script>
+ <script>
+ var wxShareData = {
+       activityNumber: 'jinbohui20151218',
+       title: '炒股就上牛仔网，真牛股，拿得住',
+       desc: '投资学习，经验分享，尽在牛仔网。6年专注股民社区，累计服务超过1亿用户，只为股民着想',
+       link: 'https://security.9666.cn/20151218.action',
+       imgUrl: 'http://img.9666sr.com/sr/images/security/20151218/share.png'
+ }
+ $(function(){
+	 var reg20151218 = {
+		 $phone: $('#phone'),
+		 $captcha: $('#captcha'),
+		 $code: $('#code'),
+		 $getCode: $('#getCode'),
+		 $imgCode: $('#imgCode'),
+		 $submitBtn: $('#submitBtn'),
+		 flag: false,
+		 hasCaptcha: false,
+		 
+		 errorTips: function(errMsg){
+			 layer.open({
+			    content: errMsg,
+			    style: 'background-color:rgba(51,51,51,.9); color:#fff; border:none;',
+			    time: 2
+			});
+		 },
+	     countDown: function(dom, m){
+	        dom.text(m + '秒后可重发');
+	        var t = setInterval(function(){
+	            m--;
+	            if(m == 0){ 
+	                dom.text('获取验证码').removeAttr('disabled');
+	                clearInterval(t);
+	                return;
+	            }
+	            dom.text(m + '秒后可重发');
+	        }, 1000);
+	     },
+	     //判断是否存在图片验证码
+ 		 isHasCaptcha: function(){
+ 			var _this = this;
+ 			if(_this.$captcha.is(':hidden')){
+ 				_this.hasCaptcha = false;return _this.hasCaptcha;
+ 			}
+ 			_this.hasCaptcha = true;return _this.hasCaptcha;
+		 },
+		 //刷新验证码
+		 reloadCaptcha: function(){
+			 $('#imgCode').attr('src','/captcha.action?t='+(+new Date()));
+		 },
+		 getPhone: function(){var _this = this;return _this.$phone.val();},
+		 getCaptcha: function(){var _this = this;if(_this.isHasCaptcha()){return _this.$captcha.val();}},
+		 getCode: function(){var _this = this;return _this.$code.val();},
+		
+		//检查手机号是否合法
+		 checkPhone: function(){
+			var _this = this, phoneVal = this.getPhone();
+	        if(phoneVal == ''){_this.errorTips('手机号不能为空' ); _this.flag = false; return false; }
+	        if(phoneVal.length != 11 || !/^\d*$/.test(phoneVal)){_this.errorTips('手机号必须是11位数字' ); _this.flag = false; return false; }
+	        if(!/^(13|14|15|17|18)\d{9}$/.test(phoneVal)){_this.errorTips('手机号不正确' ); _this.flag = false; return false; }
+	        this.flag = true; return true;
+		 },
+		//检查图片验证码是否为空
+		 checkCaptcha: function(){
+			 var _this = this, captchaVal = this.getCaptcha();
+		     if(captchaVal == ''){_this.errorTips('图片验证码不能为空' ); _this.flag = false; return false; }
+		     this.flag = true; return true;
+		 },
+		 //检查验证码是否为空
+		 checkCode: function(){
+			 var _this = this, codeVal = this.getCode(); 
+			 if(codeVal == ''){_this.errorTips('验证码不能为空' ); _this.flag = false; return false; }
+		     this.flag = true; return true;
+		 },
+		 //注册用户
+		 regSubmit: function(){
+			 var _this = this;
+			 var param = {
+				phone: _this.getPhone(),
+				phoneCode: _this.getCode(),
+				partner: 'act20151218'
+			}
+			$.ajax({
+				url: '/registerAjax.action',
+				data: param,
+				dataType: 'json',
+				success: function(d){
+					if(d.success){
+						_this.$submitBtn.attr('disabled','disabled').addClass('noClick');
+						window.location.href = '/20151218/success.action';
+					}else{
+						_this.errorTips(d.message);
+					}
+					
+				}
+			});
+		 },
+		 //获取手机验证码
+		 sendPhone: function(){
+			 var _this = this;
+			 var param = {
+				phone: _this.getPhone(),
+				code: _this.getCaptcha()
+			 }
+			 $.ajax({
+				 url: '/sendPhoneValidateAjax.action',
+				 data: param,
+				 dataType: 'json',
+				 success:function(d){
+					 if(d.success){
+						 _this.$getCode.attr('disabled','disabled').addClass('noClick');
+						 _this.countDown(_this.$getCode,60);
+					 }else{
+						 _this.errorTips(d.message);
+						 if(d.errorType == 6){
+							 _this.reloadCaptcha();
+						 }
+						 if(d.errorType == 5){
+							 $('.imgCode').show();
+						 }
+					 }
+				 }
+			 });
+		 },
+		 init: function(){
+			 var _this = this;
+			 //获取手机验证码
+			 _this.$getCode.click(function(){
+				 if(_this.isHasCaptcha()){
+					 if(_this.checkPhone() && _this.checkCaptcha()){
+						 _this.sendPhone();
+					 } 
+				 }else{
+					 if(_this.checkPhone()){
+						 _this.sendPhone();
+					 }
+				 }
+				 
+			 })
+			 //注册用户先判断是否验证图片验证码
+			 _this.$submitBtn.click(function(){
+				 console.log(_this.isHasCaptcha());
+				 if(_this.isHasCaptcha()){
+					 if(_this.checkPhone() && _this.checkCaptcha() && _this.checkCode()){
+						_this.regSubmit();
+					 }
+				 }
+				 else{
+					 if(_this.checkPhone() && _this.checkCode()){
+						 _this.regSubmit();
+					 }
+				 }
+				 
+			 });
+			 
+			 _this.$imgCode.click(function(){
+				 _this.reloadCaptcha();
+			 });
+		 }
+	 }
+	 var isShowImgCode = false;
+	 if(isShowImgCode){
+		 $('.imgCode').show();
+	 }
+	 reg20151218.init();
+ })
+</script>
+</body>
+</html>
